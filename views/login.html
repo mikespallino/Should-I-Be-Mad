@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>SIBM - Login</title>
+    <!-- Bootstrap styles -->
+    <link rel="stylesheet" type="text/css" href="static/bootstrap.css">
+    <!-- Custom styles for login -->
+    <link href="static/login.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <form action="/login" method="post" class="form-signin">
+            <h2 class="form-signin-heading">Please Login</h2>
+            <label for="inputText" class="sr-only">Username</label>
+            <input type="text" name="username" id="inputText" class="form-control" placeholder="Username" required autofocus>
+            <label for="inputPassword" class="sr-only">Password</label>
+            <input type="password" name="password" id="inputPassword" class="form-control" placeholder="Password" required>
+            <br />
+            <button class="btn btn-lg btn-primary" type="submit">Login</button>
+            <br/>
+            <br/>
+            <p style="color:red;">{{failed}}</p>
+        </form>
+    </div>
+</body>
+
+
+<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+<script src="static/bootstrap.js"></script>
+
+</html>
