@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>SIBM - New Post</title>
+    <link rel="stylesheet" type="text/css" href="static/bootstrap.css">
+</head>
+
+<body>
+    <div class="container">
+        <h2>Should I Be Mad?</h2>
+        <form action="/make_post" method="post" id="post_form">
+            <textarea class="form-control" name="post_content">What are you mad about?</textarea>
+            <br />
+            <button class="btn btn-primary" type="submit">Post!</button>
+        </form>
+        {{!status}}
+    </div>
+</body>
+
+<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+<script src="static/bootstrap.js"></script>
+
+</html>

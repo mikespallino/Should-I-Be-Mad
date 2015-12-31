@@ -2,8 +2,9 @@ import bottle
 import os
 import hashlib
 import MySQLdb
+import uuid
 from ConfigParser import ConfigParser
-
+from MySQLdb.cursors import SSDictCursor
 
 conf = ConfigParser()
 conf.read(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sibm.ini'))
@@ -109,6 +110,35 @@ def do_login():
         return bottle.template('login', failed='Login failed!')
 
 
+def generate_front_page():
+    """
+    Query the SIBMPostData table for posts to display
+    :return: Front Page posts
+    """
+    conn = MySQLdb.connect(host='localhost', db='SIBM', user=conf.get('db', 'user'), passwd=conf.get('db', 'passwd'))
+    cursor = conn.cursor(SSDictCursor)
+    try:
+        cursor.execute("""SELECT * FROM `SIBMPostData` LIMIT 25;""")
+        recs = cursor.fetchall()
+
+        front_page = '<table class="table table-bordered table-striped">\n'
+        for rec in recs:
+            front_page += '\t<tr>\n'
+            front_page += '\t\t<td>{score}</td>\n'.format(score=rec['post_score'])
+            front_page += '\t\t<td>{cont}</td>\n'.format(cont=rec['post_content'])
+            front_page += '\t\t<td>{user}</td>\n'.format(user=rec['username'])
+            front_page += '\t</tr>\n'
+        front_page += '</table>\n'
+
+    except Exception as e:
+        return 'There was an error generating the Front Page. Sorry!'
+
+    finally:
+        conn.close()
+
+    return front_page
+
+
 @bottle.route('/')
 @authenticate
 def index():
@@ -116,7 +146,51 @@ def index():
     Show the index page to the user
     :return: index page template
     """
-    return bottle.template('index')
+    front_page = generate_front_page()
+    return bottle.template('index', post_data=front_page)
+
+
+@bottle.route('/make_post', method='GET')
+@authenticate
+def make_post():
+    """
+    Show the make_post page to the user
+    :return: make_post page template
+    """
+    return bottle.template('make_post', status='')
+
+
+@bottle.route('/make_post', method='POST')
+@authenticate
+def do_make_post():
+    """
+    Connect to the database, cleanse user input, post data
+    :return: make_post page if error else redirect to index
+    """
+    conn = MySQLdb.connect(host='localhost', db='SIBM', user=conf.get('db', 'user'), passwd=conf.get('db', 'passwd'))
+    cursor = conn.cursor()
+    post_content = bottle.request.forms.get('post_content')
+
+    failed = False
+    try:
+        cont = conn.escape(post_content)[1:]
+        cont = cont[:len(cont)-1]
+        cursor.execute(
+            """INSERT INTO `SIBMPostData` (post_uuid, post_content, post_score, username) VALUES ("{uid}", "{cont}", 1, "{user}")""".format(
+                uid=uuid.uuid4().hex, cont=cont, user=user['username']))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        status = '<p style="color:red">Post failed!</p>'
+        failed = True
+        print(e)
+    finally:
+        conn.close()
+
+    if failed:
+        return bottle.template('make_post', status=status)
+    else:
+        bottle.redirect('/')
 
 
 @bottle.route('/static/<filename>')

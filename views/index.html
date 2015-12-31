@@ -8,7 +8,14 @@
 </head>
 
 <body>
-    <h2>SHOULD I BE MAD??</h2>
+    <div class="container">
+        <h2>SHOULD I BE MAD??</h2>
+        {{!post_data}}
+        <br />
+        <form action="/make_post" method="get">
+            <button class="btn btn-primary" type="submit">Make Post</button>
+        </form>
+    </div>
 </body>
 
 <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
