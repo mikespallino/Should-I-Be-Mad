@@ -2,7 +2,6 @@ import bottle
 import os
 import hashlib
 import MySQLdb
-
 from ConfigParser import ConfigParser
 
 
@@ -34,11 +33,54 @@ def verify_credentials(username, password):
 
 
 def authenticate(func):
+    """
+    Authentication decorator
+    :param func: function to decorate
+    :return:
+    """
+
     def authenticate_and_call(*args, **kwargs):
         if not verify_credentials(user['username'], user['password']):
             bottle.redirect('/login')
         return func(*args, **kwargs)
+
     return authenticate_and_call
+
+
+@bottle.route('/register')
+def register():
+    """
+    Show the registration page to the user
+    :return: registration page template
+    """
+    return bottle.template('register', result='')
+
+
+@bottle.route('/register', method='POST')
+def do_register():
+    """
+    Perform registration
+    :return: Registration page indicating success or failure
+    """
+    username = bottle.request.forms.get('username')
+    salt = hashlib.md5(username).digest()
+    password = hashlib.sha256(salt + bottle.request.forms.get('password')).hexdigest()
+
+    conn = MySQLdb.connect(host='localhost', db='SIBM', user=conf.get('db', 'user'), passwd=conf.get('db', 'passwd'))
+    cursor = conn.cursor()
+    result = '<p style="color:green">Registration Succeeded.</p>'
+    try:
+        cursor.execute(
+            """INSERT INTO `SIBMUsers` (username, passwd) VALUES ("{u}", "{p}");""".format(u=username, p=password))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        result = '<p style="color:red">Registration Failed. {}</p>'.format(
+            'Username already taken.' if e[0] == 1062 else e[1])
+    finally:
+        conn.close()
+
+    return bottle.template('register', result=result)
 
 
 @bottle.route('/login')
@@ -57,7 +99,8 @@ def do_login():
     :return: login page template showing failure
     """
     username = bottle.request.forms.get('username')
-    password = hashlib.sha256(bottle.request.forms.get('password')).hexdigest()
+    salt = hashlib.md5(username).digest()
+    password = hashlib.sha256(salt + bottle.request.forms.get('password')).hexdigest()
     user['username'] = username
     user['password'] = password
     if verify_credentials(username, password):

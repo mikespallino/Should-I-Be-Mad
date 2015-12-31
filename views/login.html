@@ -12,17 +12,29 @@
 
 <body>
     <div class="container">
+        <div class="text-center">
+            <h2>Should I Be Mad?</h2>
+        </div>
+        <hr style="border-color:inherit"/>
         <form action="/login" method="post" class="form-signin">
-            <h2 class="form-signin-heading">Please Login</h2>
+            <h3 class="form-signin-heading">Please Login</h3>
             <label for="inputText" class="sr-only">Username</label>
             <input type="text" name="username" id="inputText" class="form-control" placeholder="Username" required autofocus>
             <label for="inputPassword" class="sr-only">Password</label>
             <input type="password" name="password" id="inputPassword" class="form-control" placeholder="Password" required>
             <br />
-            <button class="btn btn-lg btn-primary" type="submit">Login</button>
+            <div class="col-md-8">
+                <button class="btn btn-lg btn-primary" type="submit">Login</button>
+            </div>
             <br/>
             <br/>
             <p style="color:red;">{{failed}}</p>
+        </form>
+        <br />
+        <br />
+        <form action="/register" method="get" class="form-signin">
+            <h3>New User?</h3>
+            <button class="btn btn-lg btn-primary" id="registerButton" type="submit">Register</button>
         </form>
     </div>
 </body>

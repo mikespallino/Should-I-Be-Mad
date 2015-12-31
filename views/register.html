@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>SIBM - Register</title>
+    <!-- Bootstrap styles -->
+    <link rel="stylesheet" type="text/css" href="static/bootstrap.css">
+    <!-- Custom styles for login -->
+    <link href="static/login.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <div class="text-center">
+            <h2>Should I Be Mad?</h2>
+        </div>
+        <hr style="border-color:inherit"/>
+        <div class="col-md-8">
+            <form action="/register" method="post" class="form-signin">
+                <h3 class="form-signin-heading">Register:</h3>
+                <label for="inputText" class="sr-only">Username</label>
+                <input type="text" name="username" id="inputText" class="form-control" placeholder="Username" required autofocus>
+                <label for="inputPassword" class="sr-only">Password</label>
+                <input type="password" name="password" id="inputPassword" class="form-control" placeholder="Password" required>
+                <br />
+                <button class="btn btn-lg btn-primary" type="submit">Submit</button>
+                <br/>
+                <br/>
+                {{!result}}
+            </form>
+        </div>
+        <div class="col-md-8">
+            <form action="/login" method="get" class="form-signin">
+                <button class="btn btn-lg btn-primary" type="submit">Login Page</button>
+            </form>
+        </div>
+    </div>
+</body>
+
+
+<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+<script src="static/bootstrap.js"></script>
+
+</html>
