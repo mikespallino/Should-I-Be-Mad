@@ -123,9 +123,12 @@ def generate_front_page():
 
         front_page = '<table class="table table-bordered table-striped">\n'
         for rec in recs:
+            cont = rec['post_content']
+            if len(cont) > 4000:
+                cont = cont[:4000] + '...'
             front_page += '\t<tr>\n'
             front_page += '\t\t<td>{score}</td>\n'.format(score=rec['post_score'])
-            front_page += '\t\t<td>{cont}</td>\n'.format(cont=rec['post_content'])
+            front_page += '\t\t<td>{cont}</td>\n'.format(cont=cont)
             front_page += '\t\t<td>{user}</td>\n'.format(user=rec['username'])
             front_page += '\t</tr>\n'
         front_page += '</table>\n'
