@@ -63,9 +63,9 @@ def do_register():
     Perform registration
     :return: Registration page indicating success or failure
     """
-    username = bottle.request.forms.get('username').encode('utf-8')
-    salt = hashlib.md5(username).digest()
-    password = hashlib.sha256(salt + bottle.request.forms.get('password').encode('utf-8')).hexdigest()
+    username = bottle.request.forms.get('username')
+    salt = hashlib.md5(username.encode('utf-8')).digest()
+    password = hashlib.sha256(salt + bottle.request.forms.get('password')).hexdigest()
 
     conn = pymysql.connect(host='localhost', db='SIBM', user=conf.get('db', 'user'), passwd=conf.get('db', 'passwd'))
     cursor = conn.cursor()
@@ -99,8 +99,8 @@ def do_login():
     Perform login validation, success redirects to the index page
     :return: login page template showing failure
     """
-    username = bottle.request.forms.get('username').encode('utf-8')
-    salt = hashlib.md5(username).digest()
+    username = bottle.request.forms.get('username')
+    salt = hashlib.md5(username.encode('utf-8')).digest()
     password = hashlib.sha256(salt + bottle.request.forms.get('password').encode('utf-8')).hexdigest()
     user['username'] = username
     user['password'] = password
