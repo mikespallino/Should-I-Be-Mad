@@ -1,10 +1,10 @@
 import bottle
 import os
 import hashlib
-import MySQLdb
+import pymysql
 import uuid
-from ConfigParser import ConfigParser
-from MySQLdb.cursors import SSDictCursor
+from configparser import ConfigParser
+from pymysql.cursors import SSDictCursor
 
 conf = ConfigParser()
 conf.read(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sibm.ini'))
@@ -22,7 +22,7 @@ def verify_credentials(username, password):
     """
     if not username or not password:
         return False
-    conn = MySQLdb.connect(host='localhost', db='SIBM', user=conf.get('db', 'user'), passwd=conf.get('db', 'passwd'))
+    conn = pymysql.connect(host='localhost', db='SIBM', user=conf.get('db', 'user'), passwd=conf.get('db', 'passwd'))
     cursor = conn.cursor()
     cursor.execute("""SELECT passwd FROM `SIBMUsers` WHERE username="{}";""".format(username))
     res = cursor.fetchone()
@@ -63,11 +63,11 @@ def do_register():
     Perform registration
     :return: Registration page indicating success or failure
     """
-    username = bottle.request.forms.get('username')
+    username = bottle.request.forms.get('username').encode('utf-8')
     salt = hashlib.md5(username).digest()
-    password = hashlib.sha256(salt + bottle.request.forms.get('password')).hexdigest()
+    password = hashlib.sha256(salt + bottle.request.forms.get('password').encode('utf-8')).hexdigest()
 
-    conn = MySQLdb.connect(host='localhost', db='SIBM', user=conf.get('db', 'user'), passwd=conf.get('db', 'passwd'))
+    conn = pymysql.connect(host='localhost', db='SIBM', user=conf.get('db', 'user'), passwd=conf.get('db', 'passwd'))
     cursor = conn.cursor()
     result = '<p style="color:green">Registration Succeeded.</p>'
     try:
@@ -99,9 +99,9 @@ def do_login():
     Perform login validation, success redirects to the index page
     :return: login page template showing failure
     """
-    username = bottle.request.forms.get('username')
+    username = bottle.request.forms.get('username').encode('utf-8')
     salt = hashlib.md5(username).digest()
-    password = hashlib.sha256(salt + bottle.request.forms.get('password')).hexdigest()
+    password = hashlib.sha256(salt + bottle.request.forms.get('password').encode('utf-8')).hexdigest()
     user['username'] = username
     user['password'] = password
     if verify_credentials(username, password):
@@ -115,7 +115,7 @@ def generate_front_page():
     Query the SIBMPostData table for posts to display
     :return: Front Page posts
     """
-    conn = MySQLdb.connect(host='localhost', db='SIBM', user=conf.get('db', 'user'), passwd=conf.get('db', 'passwd'))
+    conn = pymysql.connect(host='localhost', db='SIBM', user=conf.get('db', 'user'), passwd=conf.get('db', 'passwd'))
     cursor = conn.cursor(SSDictCursor)
     try:
         cursor.execute("""SELECT * FROM `SIBMPostData` LIMIT 25;""")
@@ -170,14 +170,14 @@ def do_make_post():
     Connect to the database, cleanse user input, post data
     :return: make_post page if error else redirect to index
     """
-    conn = MySQLdb.connect(host='localhost', db='SIBM', user=conf.get('db', 'user'), passwd=conf.get('db', 'passwd'))
+    conn = pymysql.connect(host='localhost', db='SIBM', user=conf.get('db', 'user'), passwd=conf.get('db', 'passwd'))
     cursor = conn.cursor()
     post_content = bottle.request.forms.get('post_content')
 
     failed = False
     try:
         cont = conn.escape(post_content)[1:]
-        cont = cont[:len(cont)-1]
+        cont = cont[:len(cont) - 1]
         cursor.execute(
             """INSERT INTO `SIBMPostData` (post_uuid, post_content, post_score, username) VALUES ("{uid}", "{cont}", 1, "{user}")""".format(
                 uid=uuid.uuid4().hex, cont=cont, user=user['username']))
