@@ -13,6 +13,11 @@ user = {'username': '',
         'password': ''}
 
 
+@bottle.route('/error')
+def error():
+    return bottle.template('error', error='<p style="color: red">We probably did something dumb.</p>')
+
+
 def verify_credentials(username, password):
     """
     Verify the login credentials of the user with the database
@@ -22,11 +27,20 @@ def verify_credentials(username, password):
     """
     if not username or not password:
         return False
-    conn = pymysql.connect(host='localhost', db='SIBM', user=conf.get('db', 'user'), passwd=conf.get('db', 'passwd'))
-    cursor = conn.cursor()
-    cursor.execute("""SELECT passwd FROM `SIBMUsers` WHERE username="{}";""".format(username))
-    res = cursor.fetchone()
-    conn.close()
+    conn = None
+    try:
+        conn = pymysql.connect(host='localhost', db='SIBM', user=conf.get('db', 'user'),
+                               passwd=conf.get('db', 'passwd'))
+        cursor = conn.cursor()
+        cursor.execute("""SELECT passwd FROM `SIBMUsers` WHERE username="{}";""".format(username))
+        res = cursor.fetchone()
+    except Exception as e:
+        bottle.redirect('/error')
+        return False
+    finally:
+        if conn:
+            conn.close()
+
     if not res:
         return False
     else:
@@ -70,18 +84,25 @@ def do_register():
     conn = pymysql.connect(host='localhost', db='SIBM', user=conf.get('db', 'user'), passwd=conf.get('db', 'passwd'))
     cursor = conn.cursor()
     result = '<p style="color:green">Registration Succeeded.</p>'
+    success = False
     try:
         cursor.execute(
             """INSERT INTO `SIBMUsers` (username, passwd) VALUES ("{u}", "{p}");""".format(u=username, p=password))
         conn.commit()
+        success = True
+    except pymysql.DataError as dataErr:
+        conn.rollback()
+        resp = '<p style="color:red">Registration Failed. Invalid </p>'.format(dataErr)
+    except pymysql.IntegrityError:
+        conn.rollback()
+        resp = '<p style="color:red">Registration Failed. Username already taken.</p>'
     except Exception as e:
         conn.rollback()
-        result = '<p style="color:red">Registration Failed. {}</p>'.format(
-            'Username already taken.' if e[0] == 1062 else e[1])
+        resp = '<p style="color:red">Registration Failed. {}</p>'.format(e)
     finally:
         conn.close()
 
-    return bottle.template('register', result=result)
+    return bottle.template('register', result=result) if success else bottle.template('error', error=resp)
 
 
 @bottle.route('/login')
@@ -134,7 +155,8 @@ def generate_front_page():
         front_page += '\t</table>\n'
 
     except Exception as e:
-        return 'There was an error generating the Front Page. Sorry!'
+        conn.close()
+        return bottle.template('error', error='There was an error generating the Front Page. Sorry!')
 
     finally:
         conn.close()
