@@ -65,7 +65,7 @@ def do_register():
     """
     username = bottle.request.forms.get('username')
     salt = hashlib.md5(username.encode('utf-8')).digest()
-    password = hashlib.sha256(salt + bottle.request.forms.get('password')).hexdigest()
+    password = hashlib.sha256(salt + bottle.request.forms.get('password').encode('utf-8')).hexdigest()
 
     conn = pymysql.connect(host='localhost', db='SIBM', user=conf.get('db', 'user'), passwd=conf.get('db', 'passwd'))
     cursor = conn.cursor()
@@ -121,17 +121,17 @@ def generate_front_page():
         cursor.execute("""SELECT * FROM `SIBMPostData` LIMIT 25;""")
         recs = cursor.fetchall()
 
-        front_page = '<table class="table table-bordered table-striped">\n'
+        front_page = '<table class="table table-bordered table-striped table-condensed">\n'
         for rec in recs:
             cont = rec['post_content']
             if len(cont) > 4000:
                 cont = cont[:4000] + '...'
-            front_page += '\t<tr>\n'
-            front_page += '\t\t<td>{score}</td>\n'.format(score=rec['post_score'])
-            front_page += '\t\t<td>{cont}</td>\n'.format(cont=cont)
-            front_page += '\t\t<td>{user}</td>\n'.format(user=rec['username'])
-            front_page += '\t</tr>\n'
-        front_page += '</table>\n'
+            front_page += '\t\t<tr>\n'
+            front_page += '\t\t\t<td id="score">{score}</td>\n'.format(score=rec['post_score'])
+            front_page += '\t\t\t<td id="cont"><div class="td-cont">{cont}</div></td>\n'.format(cont=cont)
+            front_page += '\t\t\t<td id="user">{user}</td>\n'.format(user=rec['username'])
+            front_page += '\t\t</tr>\n'
+        front_page += '\t</table>\n'
 
     except Exception as e:
         return 'There was an error generating the Front Page. Sorry!'

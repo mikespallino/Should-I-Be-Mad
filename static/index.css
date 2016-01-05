@@ -2,6 +2,14 @@ table {
     table-layout: fixed;
 }
 
-td {
-    word-wrap: break-word;
+#score {
+    width: 50px;
+}
+
+#cont {
+    width: 650px;
+}
+
+#user {
+    width: 150px;
 }
