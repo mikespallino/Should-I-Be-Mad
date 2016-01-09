@@ -1,0 +1,6 @@
+MAKE_POST_QUERY = """INSERT INTO `SIBMPostData` (post_uuid, post_content, post_score, username) VALUES ("{uid}", "{cont}", {score}, "{user}")"""
+SELECT_POST_QUERY = """SELECT * FROM `SIBMPostData` LIMIT 25;"""
+REGISTER_USER_QUERY = """INSERT INTO `SIBMUsers` (username, passwd) VALUES ("{u}", "{p}");"""
+VERIFY_USER_QUERY = """SELECT passwd FROM `SIBMUsers` WHERE username="{}";"""
+GET_POST_QUERY = """SELECT * FROM `SIBMPostData` WHERE post_uuid = ('{guid}');"""
+UPDATE_POST_SCORE_QUERY = """UPDATE `SIBMPostData` SET post_score={score} WHERE post_uuid="{uid}";"""

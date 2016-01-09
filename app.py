@@ -3,18 +3,26 @@ import os
 import hashlib
 import pymysql
 import uuid
+
 from configparser import ConfigParser
 from pymysql.cursors import SSDictCursor
+from sql_queries import *
 
 conf = ConfigParser()
 conf.read(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sibm.ini'))
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
 user = {'username': '',
         'password': ''}
+connection_credentials = {'host': 'localhost', 'db': 'SIBM', 'user': conf.get('db', 'user'),
+                          'passwd': conf.get('db', 'passwd')}
 
 
 @bottle.route('/error')
 def error():
+    """
+    Display the error page to the user
+    :return: error page template
+    """
     return bottle.template('error', error='<p style="color: red">We probably did something dumb.</p>')
 
 
@@ -29,10 +37,9 @@ def verify_credentials(username, password):
         return False
     conn = None
     try:
-        conn = pymysql.connect(host='localhost', db='SIBM', user=conf.get('db', 'user'),
-                               passwd=conf.get('db', 'passwd'))
+        conn = pymysql.connect(**connection_credentials)
         cursor = conn.cursor()
-        cursor.execute("""SELECT passwd FROM `SIBMUsers` WHERE username="{}";""".format(username))
+        cursor.execute(VERIFY_USER_QUERY.format(username))
         res = cursor.fetchone()
     except Exception as e:
         bottle.redirect('/error')
@@ -62,6 +69,50 @@ def authenticate(func):
     return authenticate_and_call
 
 
+@bottle.route('/upvote/<post_guid>')
+@authenticate
+def upvote(post_guid):
+    """
+    Increment a post's score, redirect to index after
+    :param post_guid: post's guid in the database
+    :return:
+    """
+    change_score(post_guid, 1)
+    bottle.redirect('/')
+
+
+@bottle.route('/downvote/<post_guid>')
+@authenticate
+def downvote(post_guid):
+    """
+    Decrement a post's score, redirect to index after
+    :param post_guid: post's guid in the database
+    :return:
+    """
+    change_score(post_guid, -1)
+    bottle.redirect('/')
+
+
+def change_score(post_guid, score_change):
+    """
+    Grab post data from the database, update the score and update the database with new score
+    :param post_guid: post's guid in the database
+    :param score_change: +1 or -1 from either upvote or downvote
+    :return:
+    """
+    conn = pymysql.connect(**connection_credentials)
+    cursor = conn.cursor(SSDictCursor)
+    cursor.execute(GET_POST_QUERY.format(guid=post_guid))
+
+    # This should only be one record
+    res = cursor.fetchall()[0]
+    post_score = res['post_score'] + score_change
+
+    cursor.execute(UPDATE_POST_SCORE_QUERY.format(score=post_score, uid=post_guid))
+    conn.commit()
+    conn.close()
+
+
 @bottle.route('/register')
 def register():
     """
@@ -81,13 +132,12 @@ def do_register():
     salt = hashlib.md5(username.encode('utf-8')).digest()
     password = hashlib.sha256(salt + bottle.request.forms.get('password').encode('utf-8')).hexdigest()
 
-    conn = pymysql.connect(host='localhost', db='SIBM', user=conf.get('db', 'user'), passwd=conf.get('db', 'passwd'))
+    conn = pymysql.connect(**connection_credentials)
     cursor = conn.cursor()
     result = '<p style="color:green">Registration Succeeded.</p>'
     success = False
     try:
-        cursor.execute(
-            """INSERT INTO `SIBMUsers` (username, passwd) VALUES ("{u}", "{p}");""".format(u=username, p=password))
+        cursor.execute(REGISTER_USER_QUERY.format(u=username, p=password))
         conn.commit()
         success = True
     except pymysql.DataError as dataErr:
@@ -136,10 +186,10 @@ def generate_front_page():
     Query the SIBMPostData table for posts to display
     :return: Front Page posts
     """
-    conn = pymysql.connect(host='localhost', db='SIBM', user=conf.get('db', 'user'), passwd=conf.get('db', 'passwd'))
+    conn = pymysql.connect(**connection_credentials)
     cursor = conn.cursor(SSDictCursor)
     try:
-        cursor.execute("""SELECT * FROM `SIBMPostData` LIMIT 25;""")
+        cursor.execute(SELECT_POST_QUERY)
         recs = cursor.fetchall()
 
         front_page = '<table class="table table-bordered table-striped table-condensed">\n'
@@ -148,7 +198,7 @@ def generate_front_page():
             if len(cont) > 4000:
                 cont = cont[:4000] + '...'
             front_page += '\t\t<tr>\n'
-            front_page += '\t\t\t<td id="score">{score}</td>\n'.format(score=rec['post_score'])
+            front_page += '\t\t\t<td id="score"><a href="/upvote/{g}">UP</a><br />{score}<br /><a href="/downvote/{g}">DOWN</a></td>\n'.format(score=rec['post_score'], g=rec['post_uuid'])
             front_page += '\t\t\t<td id="cont"><div class="td-cont">{cont}</div></td>\n'.format(cont=cont)
             front_page += '\t\t\t<td id="user">{user}</td>\n'.format(user=rec['username'])
             front_page += '\t\t</tr>\n'
@@ -192,17 +242,15 @@ def do_make_post():
     Connect to the database, cleanse user input, post data
     :return: make_post page if error else redirect to index
     """
-    conn = pymysql.connect(host='localhost', db='SIBM', user=conf.get('db', 'user'), passwd=conf.get('db', 'passwd'))
+    conn = pymysql.connect(**connection_credentials)
     cursor = conn.cursor()
     post_content = bottle.request.forms.get('post_content')
 
     failed = False
     try:
-        cont = conn.escape(post_content)[1:]
-        cont = cont[:len(cont) - 1]
-        cursor.execute(
-            """INSERT INTO `SIBMPostData` (post_uuid, post_content, post_score, username) VALUES ("{uid}", "{cont}", 1, "{user}")""".format(
-                uid=uuid.uuid4().hex, cont=cont, user=user['username']))
+        cont = conn.escape(post_content)
+        cont = cont.replace("'", '')
+        cursor.execute(MAKE_POST_QUERY.format(uid=uuid.uuid4().hex, cont=cont, score=1, user=user['username']))
         conn.commit()
     except Exception as e:
         conn.rollback()
