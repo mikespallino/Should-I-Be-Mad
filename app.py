@@ -288,6 +288,14 @@ def do_login():
         return bottle.template('login', failed='Login failed!')
 
 
+@bottle.route('/logout')
+@authenticate
+def logout():
+    user['username'] = ''
+    user['password'] = ''
+
+    bottle.redirect('/')
+
 def generate_front_page():
     """
     Query the SIBMPostData table for posts to display
@@ -344,7 +352,7 @@ def index():
     :return: index page template
     """
     front_page = generate_front_page()
-    return bottle.template('index', post_data=front_page)
+    return bottle.template('index', username=user['username'], post_data=front_page)
 
 
 @bottle.route('/make_post', method='GET')

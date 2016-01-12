@@ -12,11 +12,13 @@
 <body>
     <div class="container">
         <h2 class="text-center"><span class="glyphicon glyphicon-thumbs-up text-success"></span> Should I Be Mad? <span class="glyphicon glyphicon-thumbs-down text-danger"></span></h2>
+        <div class="col-md-4 col-md-offset-10"><a href="/logout">({{username}}) LOGOUT</a></div>
         {{!post_data}}
         <br />
         <form action="/make_post" method="get">
             <button class="btn btn-primary" type="submit">Make Post</button>
         </form>
+        <br />
     </div>
 </body>
 
