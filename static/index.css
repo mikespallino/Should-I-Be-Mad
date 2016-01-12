@@ -1,9 +1,10 @@
 table {
     table-layout: fixed;
+    background-color: #fff;
 }
 
 #score {
-    width: 25px;
+    width: 50px;
 }
 
 #cont {
@@ -12,4 +13,10 @@ table {
 
 #user {
     width: 200px;
+}
+
+body {
+    padding-top: 40px;
+    padding-bottom: 40px;
+    background-color: #eee;
 }

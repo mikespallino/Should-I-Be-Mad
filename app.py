@@ -72,11 +72,21 @@ def authenticate(func):
 @authenticate
 def vote_yes(post_guid):
     """
-    Increment a post's score, redirect to index after
-    :param post_guid: post's guid in the database
+    Check the vote table for a previous vote
+    If there is no entry
+        Increment a post's score, Make entry in vote table
+    If there is an entry and it's not 'Y'
+        Increment a post's score, Update the entry in vote table
+    Redirect to index after
     :return:
     """
-    change_score(post_guid, 1)
+    check = check_vote(user['username'], post_guid, 'Y')
+    if not check['vote_type'] and not check['check']:
+        change_score(post_guid, 1)
+        update_vote_table(user['username'], post_guid, 'Y')
+    elif check['vote_type'] and not check['check']:
+        change_score(post_guid, 1)
+        change_vote(user['username'], post_guid, 'Y')
     bottle.redirect('/')
 
 
@@ -84,11 +94,22 @@ def vote_yes(post_guid):
 @authenticate
 def vote_no(post_guid):
     """
-    Decrement a post's score, redirect to index after
+    Check the vote table for a previous vote
+    If there is no entry
+        Decrement a post's score, Make entry in vote table
+    If there is an entry and it's not 'N'
+        Decrement a post's score, Update the entry in vote table
+    Redirect to index after
     :param post_guid: post's guid in the database
     :return:
     """
-    change_score(post_guid, -1)
+    check = check_vote(user['username'], post_guid, 'N')
+    if not check['vote_type'] and not check['check']:
+        change_score(post_guid, -1)
+        update_vote_table(user['username'], post_guid, 'N')
+    elif check['vote_type'] and not check['check']:
+        change_score(post_guid, -1)
+        change_vote(user['username'], post_guid, 'N')
     bottle.redirect('/')
 
 
@@ -99,17 +120,104 @@ def change_score(post_guid, score_change):
     :param score_change: +1 or -1 from either upvote or downvote
     :return:
     """
-    conn = pymysql.connect(**connection_credentials)
-    cursor = conn.cursor(SSDictCursor)
-    cursor.execute(GET_POST_QUERY.format(guid=post_guid))
+    failed = False
+    try:
+        conn = pymysql.connect(**connection_credentials)
+        cursor = conn.cursor(SSDictCursor)
+        cursor.execute(GET_POST_QUERY.format(guid=post_guid))
 
-    # This should only be one record
-    res = cursor.fetchall()[0]
-    post_score = res['post_score'] + score_change
+        # This should only be one record
+        res = cursor.fetchall()[0]
+        post_score = res['post_score'] + score_change
 
-    cursor.execute(UPDATE_POST_SCORE_QUERY.format(score=post_score, uid=post_guid))
-    conn.commit()
-    conn.close()
+        cursor.execute(UPDATE_POST_SCORE_QUERY.format(score=post_score, uid=post_guid))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        failed = True
+    finally:
+        conn.close()
+
+    if failed:
+        bottle.redirect('/error')
+
+
+def update_vote_table(username, post_uuid, vote):
+    """
+    Make a new entry in the vote table
+    :param username: username that voted
+    :param post_uuid: post voted on
+    :param vote: vote_type ('Y' or 'N')
+    :return:
+    """
+    failed = False
+    try:
+        conn = pymysql.connect(**connection_credentials)
+        cursor = conn.cursor()
+        cursor.execute(UPDATE_VOTE_TABLE_QUERY.format(user=username, guid=post_uuid, vote=vote))
+        conn.commit()
+
+    except Exception as e:
+        conn.rollback()
+        failed = True
+    finally:
+        conn.close()
+
+    if failed:
+        bottle.redirect('/error')
+
+
+def check_vote(username, post_guid, vote_type):
+    """
+    Check for vote table entries, If there is an entry compare it to vote_type
+    :param username: username that voted
+    :param post_guid: post voted on
+    :param vote_type: vote_type ('Y' or 'N') to compare to table value
+    :return: dictionary: ['vote_type'] if there is an entry ['check'] if == vote_type
+    """
+    failed = False
+    try:
+        conn = pymysql.connect(**connection_credentials)
+        cursor = conn.cursor(SSDictCursor)
+        cursor.execute(CHECK_USER_VOTE_QUERY.format(user=username, guid=post_guid))
+
+        # This should only be one record
+        res = cursor.fetchall()
+    except Exception as e:
+        failed = True
+    finally:
+        conn.close()
+
+    if failed:
+        bottle.redirect('/error')
+
+    return {'vote_type': res[0]['vote_type'] if len(res) else None,
+            'check': res[0]['vote_type'] == vote_type if len(res) else False}
+
+
+def change_vote(username, post_uuid, vote):
+    """
+    Change an entry in the user vote table
+    :param username: username that voted
+    :param post_uuid: post voted on
+    :param vote: new vote_type ('Y' or 'N')
+    :return:
+    """
+    failed = False
+    try:
+        conn = pymysql.connect(**connection_credentials)
+        cursor = conn.cursor()
+        cursor.execute(CHANGE_VOTE_TABLE_QUERY.format(user=username, guid=post_uuid, vote=vote))
+        conn.commit()
+
+    except Exception as e:
+        conn.rollback()
+        failed = True
+    finally:
+        conn.close()
+
+    if failed:
+        bottle.redirect('/error')
 
 
 @bottle.route('/register')
@@ -188,27 +296,39 @@ def generate_front_page():
     conn = pymysql.connect(**connection_credentials)
     cursor = conn.cursor(SSDictCursor)
 
-    score_table = '\t\t\t<td id="score"> <a href="/vote_yes/{g}"> <span class="glyphicon glyphicon-thumbs-up text-success" aria-hidden="true"></span> </a> <br /> {score} <br /> <a href="/vote_no/{g}"> <span class="glyphicon glyphicon-thumbs-down text-danger" aria-hidden="true"></span> </a> </td>\n'
+    score_table = '\t\t\t<td id="score" class="text-center"><h4> <a href="/vote_yes/{g}"><span class="glyphicon glyphicon-thumbs-up {voted_y}" aria-hidden="true"></span></a> </h4><h6>{score}</h6><h4><a href="/vote_no/{g}"> <span class="glyphicon glyphicon-thumbs-down {voted_n}" aria-hidden="true"></span> </a> </h4></td>\n'
     try:
         cursor.execute(SELECT_POST_QUERY)
         recs = cursor.fetchall()
 
-        front_page = '<table class="table table-bordered table-striped table-condensed">\n'
-        front_page += '\t\t<tr><th id="score">Score</th><th id="cont">Post</th><th id="user">Username</th></tr>\n'
+        front_page = '<table class="table table-bordered table-condensed">\n'
+        front_page += '\t\t<tr"><th id="score">Score</th><th id="cont">Post</th><th id="user">Username</th></tr>\n'
         for rec in recs:
+            vote = check_vote(user['username'], rec['post_uuid'], 'Y')
+            vote_yes_format = 'text-success'
+            vote_no_format = 'text-danger'
+            if vote['vote_type']:
+                if vote['check']:
+                    vote_no_format = 'text-muted'
+                else:
+                    vote_yes_format = 'text-muted'
+            else:
+                vote_yes_format = 'text-muted'
+                vote_no_format = 'text-muted'
+
             cont = rec['post_content']
             if len(cont) > 4000:
                 cont = cont[:4000] + '...'
             front_page += '\t\t<tr>\n'
-            front_page += score_table.format(score=rec['post_score'], g=rec['post_uuid'])
+            front_page += score_table.format(voted_y=vote_yes_format, voted_n=vote_no_format, score=rec['post_score'], g=rec['post_uuid'])
             front_page += '\t\t\t<td id="cont"><div class="td-cont">{cont}</div></td>\n'.format(cont=cont)
             front_page += '\t\t\t<td id="user">{user}</td>\n'.format(user=rec['username'])
             front_page += '\t\t</tr>\n'
         front_page += '\t</table>\n'
 
     except Exception as e:
-        conn.close()
-        return bottle.template('error', error='There was an error generating the Front Page. Sorry!')
+        print(e)
+        bottle.redirect('/error')
 
     finally:
         conn.close()

@@ -11,11 +11,10 @@
 </head>
 
 <body>
+    <div class="text-center">
+            <h2 class="text-center"><span class="glyphicon glyphicon-thumbs-up text-success"></span> Should I Be Mad? <span class="glyphicon glyphicon-thumbs-down text-danger"></span></h2>
+    </div>
     <div class="container">
-        <div class="text-center">
-            <h2>Should I Be Mad?</h2>
-        </div>
-        <hr style="border-color:inherit"/>
         <form action="/login" method="post" class="form-signin">
             <h3 class="form-signin-heading">Please Login</h3>
             <label for="inputText" class="sr-only">Username</label>
@@ -26,8 +25,9 @@
             <div class="col-md-8">
                 <button class="btn btn-lg btn-primary" type="submit">Login</button>
             </div>
-            <br/>
-            <br/>
+            <br />
+            <br />
+            <br />
             <p style="color:red;">{{failed}}</p>
         </form>
         <br />

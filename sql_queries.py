@@ -4,3 +4,6 @@ REGISTER_USER_QUERY = """INSERT INTO `SIBMUsers` (username, passwd) VALUES ("{u}
 VERIFY_USER_QUERY = """SELECT passwd FROM `SIBMUsers` WHERE username="{}";"""
 GET_POST_QUERY = """SELECT * FROM `SIBMPostData` WHERE post_uuid = ('{guid}');"""
 UPDATE_POST_SCORE_QUERY = """UPDATE `SIBMPostData` SET post_score={score} WHERE post_uuid="{uid}";"""
+CHECK_USER_VOTE_QUERY = """SELECT vote_type FROM `SIBMUserVotes` WHERE (username="{user}" AND post_uuid="{guid}");"""
+UPDATE_VOTE_TABLE_QUERY = """INSERT INTO `SIBMUserVotes` (username, post_uuid, vote_type) VALUES ("{user}", "{guid}", "{vote}");"""
+CHANGE_VOTE_TABLE_QUERY = """UPDATE `SIBMUserVotes` SET vote_type="{vote}" WHERE username="{user}" AND post_uuid="{guid}";"""
