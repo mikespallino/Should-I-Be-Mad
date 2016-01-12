@@ -3,7 +3,6 @@ import os
 import hashlib
 import pymysql
 import uuid
-
 from configparser import ConfigParser
 from pymysql.cursors import SSDictCursor
 from sql_queries import *
@@ -69,9 +68,9 @@ def authenticate(func):
     return authenticate_and_call
 
 
-@bottle.route('/upvote/<post_guid>')
+@bottle.route('/vote_yes/<post_guid>')
 @authenticate
-def upvote(post_guid):
+def vote_yes(post_guid):
     """
     Increment a post's score, redirect to index after
     :param post_guid: post's guid in the database
@@ -81,9 +80,9 @@ def upvote(post_guid):
     bottle.redirect('/')
 
 
-@bottle.route('/downvote/<post_guid>')
+@bottle.route('/vote_no/<post_guid>')
 @authenticate
-def downvote(post_guid):
+def vote_no(post_guid):
     """
     Decrement a post's score, redirect to index after
     :param post_guid: post's guid in the database
@@ -188,17 +187,20 @@ def generate_front_page():
     """
     conn = pymysql.connect(**connection_credentials)
     cursor = conn.cursor(SSDictCursor)
+
+    score_table = '\t\t\t<td id="score"> <a href="/vote_yes/{g}"> <span class="glyphicon glyphicon-thumbs-up text-success" aria-hidden="true"></span> </a> <br /> {score} <br /> <a href="/vote_no/{g}"> <span class="glyphicon glyphicon-thumbs-down text-danger" aria-hidden="true"></span> </a> </td>\n'
     try:
         cursor.execute(SELECT_POST_QUERY)
         recs = cursor.fetchall()
 
         front_page = '<table class="table table-bordered table-striped table-condensed">\n'
+        front_page += '\t\t<tr><th id="score">Score</th><th id="cont">Post</th><th id="user">Username</th></tr>\n'
         for rec in recs:
             cont = rec['post_content']
             if len(cont) > 4000:
                 cont = cont[:4000] + '...'
             front_page += '\t\t<tr>\n'
-            front_page += '\t\t\t<td id="score"><a href="/upvote/{g}">UP</a><br />{score}<br /><a href="/downvote/{g}">DOWN</a></td>\n'.format(score=rec['post_score'], g=rec['post_uuid'])
+            front_page += score_table.format(score=rec['post_score'], g=rec['post_uuid'])
             front_page += '\t\t\t<td id="cont"><div class="td-cont">{cont}</div></td>\n'.format(cont=cont)
             front_page += '\t\t\t<td id="user">{user}</td>\n'.format(user=rec['username'])
             front_page += '\t\t</tr>\n'
